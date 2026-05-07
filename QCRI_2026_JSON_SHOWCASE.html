@@ -386,7 +386,7 @@ function buildNode(value, key, isLast, depth) {
           <span class="toggle" onclick="toggleNode('${id}')" data-id="${id}">−</span>
           ${keyHtml}<span class="br">[</span>${preview}
         </div>
-        <div class="indent" id="${id}">
+        <div class="indent collapsed" id="${id}">
           ${children}
           <div class="node-line"><span class="toggle-spacer"></span><span class="br">]</span>${comma}</div>
         </div>
@@ -407,7 +407,7 @@ function buildNode(value, key, isLast, depth) {
           <span class="toggle" onclick="toggleNode('${id}')" data-id="${id}">−</span>
           ${keyHtml}<span class="br">{</span>${preview}
         </div>
-        <div class="indent" id="${id}">
+        <div class="indent collapsed" id="${id}">
           ${children}
           <div class="node-line"><span class="toggle-spacer"></span><span class="br">}</span>${comma}</div>
         </div>
