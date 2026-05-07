@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Social Document Schema Viewer</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0f11;
+    --surface: #161719;
+    --surface2: #1d1f22;
+    --border: #2a2c30;
+    --border2: #353840;
+    --text: #e2e4e9;
+    --muted: #6b7280;
+    --key: #5b9bd5;
+    --str: #7ec995;
+    --num: #e5a84b;
+    --bool: #c78adb;
+    --null: #e07070;
+    --bracket: #8b9097;
+    --accent: #5b9bd5;
+    --tag-bg: #1a2535;
+    --tag-text: #5b9bd5;
+    --font-mono: 'JetBrains Mono', monospace;
+    --font-ui: 'DM Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* TOOLBAR */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 0 24px;
+    height: 52px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .toolbar-title {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    letter-spacing: 0.02em;
+  }
+
+  .toolbar-title span {
+    color: var(--accent);
+  }
+
+  .toolbar-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+  }
+
+  .btn {
+    font-family: var(--font-ui);
+    font-size: 12px;
+    font-weight: 500;
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.02em;
+  }
+
+  .btn:hover {
+    background: var(--surface2);
+    color: var(--text);
+    border-color: var(--accent);
+  }
+
+  /* MAIN LAYOUT */
+  .main {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* JSON PANEL */
+  .json-panel {
+    overflow-y: auto;
+    padding: 24px 28px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+  }
+
+  .json-panel::-webkit-scrollbar { width: 6px; }
+  .json-panel::-webkit-scrollbar-track { background: transparent; }
+  .json-panel::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  .panel-label {
+    font-family: var(--font-ui);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+
+  /* JSON TREE */
+  .json-tree {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.7;
+  }
+
+  .node { position: relative; }
+
+  .node-line {
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 1px 0;
+    border-radius: 4px;
+    cursor: default;
+    transition: background 0.1s;
+  }
+
+  .node-line:hover { background: rgba(91,155,213,0.05); }
+
+  .toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    border: 1px solid var(--border2);
+    background: var(--surface2);
+    color: var(--muted);
+    font-size: 9px;
+    cursor: pointer;
+    flex-shrink: 0;
+    margin-top: 3px;
+    transition: all 0.15s;
+    user-select: none;
+  }
+
+  .toggle:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .toggle-spacer {
+    display: inline-block;
+    width: 14px;
+    flex-shrink: 0;
+  }
+
+  .indent {
+    padding-left: 20px;
+    border-left: 1px solid var(--border);
+    margin-left: 7px;
+  }
+
+  .indent.collapsed { display: none; }
+
+  .k { color: var(--key); }
+  .s { color: var(--str); }
+  .n { color: var(--num); }
+  .b { color: var(--bool); }
+  .nl { color: var(--null); }
+  .br { color: var(--bracket); }
+  .colon { color: var(--muted); margin: 0 2px; }
+  .comma { color: var(--muted); }
+
+  .inline-preview {
+    color: var(--muted);
+    font-size: 11px;
+    font-style: italic;
+    margin-left: 4px;
+  }
+
+  /* SCHEMA PANEL */
+  .schema-panel {
+    overflow-y: auto;
+    background: var(--bg);
+    padding: 24px 20px;
+  }
+
+  .schema-panel::-webkit-scrollbar { width: 4px; }
+  .schema-panel::-webkit-scrollbar-track { background: transparent; }
+  .schema-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .schema-section {
+    margin-bottom: 20px;
+  }
+
+  .schema-section-title {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--accent);
+    font-weight: 500;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .schema-field {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .schema-field:last-child { border-bottom: none; }
+
+  .sf-name {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--key);
+  }
+
+  .sf-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .sf-type {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--str);
+  }
+
+  .sf-desc {
+    font-size: 10px;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+
+  .tag {
+    font-size: 9px;
+    font-weight: 500;
+    padding: 1px 5px;
+    border-radius: 3px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .tag-req { background: rgba(126,201,149,0.12); color: #7ec995; }
+  .tag-opt { background: rgba(107,114,128,0.15); color: #6b7280; }
+  .tag-arr { background: rgba(91,155,213,0.12); color: var(--accent); }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="toolbar-title">social_document.<span>json</span></div>
+  <div class="toolbar-actions">
+    <button class="btn" onclick="expandAll()">Expand All</button>
+    <button class="btn" onclick="collapseAll()">Collapse All</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="json-panel">
+    <div class="panel-label">Formatted JSON Data</div>
+    <div class="json-tree" id="tree"></div>
+  </div>
+
+  <div class="schema-panel">
+    <div class="panel-label">Schema Reference</div>
+
+    <div class="schema-section">
+      <div class="schema-section-title">root</div>
+      <div class="schema-field"><span class="sf-name">document_id</span><div class="sf-meta"><span class="sf-type">string</span><span class="tag tag-req">req</span></div><span class="sf-desc">Internal unique identifier</span></div>
+      <div class="schema-field"><span class="sf-name">platform_document_id</span><div class="sf-meta"><span class="sf-type">string</span><span class="tag tag-req">req</span></div><span class="sf-desc">Original platform post ID</span></div>
+      <div class="schema-field"><span class="sf-name">source_platform</span><div class="sf-meta"><span class="sf-type">string</span><span class="tag tag-req">req</span></div><span class="sf-desc">e.g. "x", "reddit", "instagram"</span></div>
+      <div class="schema-field"><span class="sf-name">published_at</span><div class="sf-meta"><span class="sf-type">datetime</span><span class="tag tag-req">req</span></div><span class="sf-desc">Original publish timestamp (ISO 8601)</span></div>
+      <div class="schema-field"><span class="sf-name">collected_at</span><div class="sf-meta"><span class="sf-type">datetime</span><span class="tag tag-req">req</span></div><span class="sf-desc">Ingestion timestamp</span></div>
+      <div class="schema-field"><span class="sf-name">collection_query</span><div class="sf-meta"><span class="sf-type">string</span><span class="tag tag-opt">opt</span></div><span class="sf-desc">Query that surfaced this document</span></div>
+      <div class="schema-field"><span class="sf-name">tags</span><div class="sf-meta"><span class="sf-type">string[]</span><span class="tag tag-arr">arr</span></div><span class="sf-desc">Free-form classification tags</span></div>
+      <div class="schema-field"><span class="sf-name">raw_metadata</span><div class="sf-meta"><span class="sf-type">object</span><span class="tag tag-opt">opt</span></div><span class="sf-desc">Platform-specific overflow data</span></div>
+    </div>
+
+    <div class="schema-section">
+      <div class="schema-section-title">content_items[]</div>
+      <div class="schema-field"><span class="sf-name">type</span><div class="sf-meta"><span class="sf-type">enum</span><span class="tag tag-req">req</span></div><span class="sf-desc">"text" | "image" | "video" | "link"</span></div>
+      <div class="schema-field"><span class="sf-name">value</span><div class="sf-meta"><span class="sf-type">string</span><span class="tag tag-opt">opt</span></div><span class="sf-desc">Text content (type=text only)</span></div>
+      <div class="schema-field"><span class="sf-name">url</span><div class="sf-meta"><span class="sf-type">string</span><span class="tag tag-opt">opt</span></div><span class="sf-desc">Media or link URL</span></div>
+      <div class="schema-field"><span class="sf-name">alt_text</span><div class="sf-meta"><span class="sf-type">string</span><span class="tag tag-opt">opt</span></div><span class="sf-desc">Image accessibility text</span></div>
+      <div class="schema-field"><span class="sf-name">duration_seconds</span><div class="sf-meta"><span class="sf-type">integer</span><span class="tag tag-opt">opt</span></div><span class="sf-desc">Video duration in seconds</span></div>
+      <div class="schema-field"><span class="sf-name">language</span><div class="sf-meta"><span class="sf-type">string</span><span class="tag tag-opt">opt</span></div><span class="sf-desc">BCP-47 language code</span></div>
+    </div>
+
+    <div class="schema-section">
+      <div class="schema-section-title">author_metadata</div>
+      <div class="schema-field"><span class="sf-name">author_id</span><div class="sf-meta"><span class="sf-type">string</span><span class="tag tag-req">req</span></div><span class="sf-desc">Internal author ID</span></div>
+      <div class="schema-field"><span class="sf-name">username</span><div class="sf-meta"><span class="sf-type">string</span><span class="tag tag-req">req</span></div><span class="sf-desc">@handle or login</span></div>
+      <div class="schema-field"><span class="sf-name">display_name</span><div class="sf-meta"><span class="sf-type">string</span><span class="tag tag-opt">opt</span></div><span class="sf-desc">Human-readable name</span></div>
+      <div class="schema-field"><span class="sf-name">followers_count</span><div class="sf-meta"><span class="sf-type">integer</span><span class="tag tag-opt">opt</span></div></div>
+      <div class="schema-field"><span class="sf-name">following_count</span><div class="sf-meta"><span class="sf-type">integer</span><span class="tag tag-opt">opt</span></div></div>
+      <div class="schema-field"><span class="sf-name">post_count</span><div class="sf-meta"><span class="sf-type">integer</span><span class="tag tag-opt">opt</span></div></div>
+    </div>
+
+    <div class="schema-section">
+      <div class="schema-section-title">engagement_metrics</div>
+      <div class="schema-field"><span class="sf-name">like_count</span><div class="sf-meta"><span class="sf-type">integer</span><span class="tag tag-opt">opt</span></div></div>
+      <div class="schema-field"><span class="sf-name">reshare_count</span><div class="sf-meta"><span class="sf-type">integer</span><span class="tag tag-opt">opt</span></div></div>
+      <div class="schema-field"><span class="sf-name">response_count</span><div class="sf-meta"><span class="sf-type">integer</span><span class="tag tag-opt">opt</span></div></div>
+    </div>
+
+    <div class="schema-section">
+      <div class="schema-section-title">entity_metadata</div>
+      <div class="schema-field"><span class="sf-name">hashtags</span><div class="sf-meta"><span class="sf-type">string[]</span><span class="tag tag-arr">arr</span></div></div>
+      <div class="schema-field"><span class="sf-name">mentions</span><div class="sf-meta"><span class="sf-type">string[]</span><span class="tag tag-arr">arr</span></div></div>
+      <div class="schema-field"><span class="sf-name">urls</span><div class="sf-meta"><span class="sf-type">string[]</span><span class="tag tag-arr">arr</span></div></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const DATA = {"document_id": "x:document:2052306630792884571", "platform_document_id": "2052306630792884571", "source_platform": "x", "published_at": "2026-05-07T08:36:45+00:00", "collected_at": "2026-05-07T08:55:18.601564+00:00", "collection_query": "qatar_airways", "content_items": [{"type": "text", "value": "Official sponsor of UCL is Qatar Airways", "language": "en"}], "author_metadata": {"author_id": "x:author:803696970766450688", "platform_author_id": "803696970766450688", "username": "peprahjones1", "display_name": "NZ22 ❤️🫂", "profile_url": "https://x.com/peprahjones1", "description": "Once again, lover of Jose and Simeone", "created_at": "2016-11-29T20:27:44+00:00", "followers_count": 383, "following_count": 1016, "post_count": 36729, "metadata": {"source_author_metadata": {"author_type": "User", "platform_user_id": "803696970766450688", "platform_encoded_user_id": "VXNlcjo4MDM2OTY5NzA3NjY0NTA2ODg=", "username": "peprahjones1", "display_name": "NZ22 ❤️🫂", "description": "Once again, lover of Jose and Simeone", "location": "Kumasi ,Ghana", "created_at": "Tue Nov 29 20:27:44 +0000 2016", "profile_url": "", "profile_image_url": "https://pbs.twimg.com/profile_images/1944684635079712768/qzQ6M5vE_normal.jpg", "profile_banner_url": "https://pbs.twimg.com/profile_banners/803696970766450688/1736977744", "profile_image_shape": "Circle", "is_blue_verified": false, "verified": false, "verified_type": null, "protected": false, "possibly_sensitive": false, "followers_count": 383, "normal_followers_count": 383, "following_count": 1016, "favourites_count": 38058, "listed_count": 0, "media_count": 775, "statuses_count": 36729, "fast_followers_count": 0, "can_dm": false, "can_media_tag": false, "default_profile": true, "default_profile_image": false, "has_custom_timelines": true, "has_graduated_access": true, "is_translator": false, "translator_type": "none", "time_zone": "", "utc_offset": 0, "professional_type": "Creator", "professional_rest_id": "1605353153452441601", "professional_category_id": null, "professional_category_name": null, "professional_category_icon_name": null, "pinned_tweet_ids": ["1973188517481365898"], "affiliates_highlighted_label": {}, "tipjar_settings": {}, "withheld_description": "", "withheld_scope": ""}, "author_relationship_metadata": {"blocked_by": false, "blocking": false, "follow_request_sent": false, "followed_by": false, "following": false, "muting": false, "notifications": false, "want_retweets": false, "super_follow_eligible": false, "super_followed_by": false, "super_following": false}, "author_profile_links": []}}, "conversation_metadata": {"conversation_id": "2052306630792884571", "metadata": {"is_quote_status": true, "author_user_id": "803696970766450688"}}, "engagement_metrics": {"like_count": 0, "reshare_count": 0, "response_count": 2, "view_count": 25, "engagement_metadata": {"quote_count": 0, "bookmark_count": 0, "view_count": 25, "view_state": "EnabledWithCount", "favorited_by_viewer": false, "retweeted_by_viewer": false, "bookmarked_by_viewer": false}}, "entity_metadata": {"hashtags": [], "mentions": [], "urls": [], "entity_metadata": {"raw_entities": {"hashtags": [], "symbols": [], "timestamps": [], "urls": [], "user_mentions": []}, "symbols": []}}, "source_metadata": {"source_name": "x", "source_url": "https://x.com/peprahjones1/status/2052306630792884571"}, "tags": ["qatar_airways"], "raw_metadata": {"structural": {"root_typename": "TimelineTimelineItem", "root_entry_type": "TimelineTimelineItem", "client_event_info": {"component": "result", "details": {"timelinesDetails": {"controllerData": "DAACDAAFDAABDAABDAABCgABAAAAAAACAAAAAAwAAgoAAQAAAAAAAAABCgACNv6WqjnSJQALAAMAAAANcWF0YXJfYWlyd2F5cwoABW0CgQFyeqdPCAAGAAAAAQoAByeHVKMO27sBCgAIAAABngGmDQAAAAAAAA=="}}, "element": "tweet"}, "feedback_info": {"feedbackKeys": ["-2134788070"]}, "item_content": {"__typename": "TimelineTweet", "highlights": {"textHighlights": [{"endIndex": 32, "startIndex": 27}, {"endIndex": 40, "startIndex": 33}]}, "itemType": "TimelineTweet", "tweetDisplayType": "Tweet", "tweet_results": {"result": {"__typename": "Tweet", "core": {"user_results": {"result": {"__typename": "User", "affiliates_highlighted_label": {}, "has_graduated_access": true, "id": "VXNlcjo4MDM2OTY5NzA3NjY0NTA2ODg=", "is_blue_verified": false, "legacy": {"blocked_by": false, "blocking": false, "can_dm": false, "can_media_tag": false, "created_at": "Tue Nov 29 20:27:44 +0000 2016", "default_profile": true, "default_profile_image": false, "description": "Once again, lover of Jose and Simeone", "entities": {"description": {}}, "fast_followers_count": 0, "favourites_count": 38058, "follow_request_sent": false, "followed_by": false, "followers_count": 383, "following": false, "friends_count": 1016, "has_custom_timelines": true, "is_translator": false, "listed_count": 0, "location": "Kumasi ,Ghana", "media_count": 775, "muting": false, "name": "NZ22 ❤️🫂", "needs_phone_verification": false, "normal_followers_count": 383, "notifications": false, "pinned_tweet_ids_str": ["1973188517481365898"], "possibly_sensitive": false, "profile_banner_url": "https://pbs.twimg.com/profile_banners/803696970766450688/1736977744", "profile_image_url_https": "https://pbs.twimg.com/profile_images/1944684635079712768/qzQ6M5vE_normal.jpg", "profile_interstitial_type": "", "protected": false, "screen_name": "peprahjones1", "statuses_count": 36729, "time_zone": "", "translator_type": "none", "url": "", "utc_offset": 0, "verified": false, "want_retweets": false, "withheld_description": "", "withheld_scope": ""}, "professional": {"category": [], "professional_type": "Creator", "rest_id": "1605353153452441601"}, "profile_image_shape": "Circle", "rest_id": "803696970766450688", "super_follow_eligible": false, "super_followed_by": false, "super_following": false, "tipjar_settings": {}}}}, "edit_control": {"edit_tweet_ids": ["2052306630792884571"], "editable_until_msecs": "1778146605000", "edits_remaining": "5", "is_edit_eligible": true}, "is_translatable": false, "legacy": {"bookmark_count": 0, "bookmarked": false, "conversation_id_str": "2052306630792884571", "created_at": "Thu May 07 08:36:45 +0000 2026", "display_text_range": [0, 40], "entities": {"hashtags": [], "symbols": [], "timestamps": [], "urls": [], "user_mentions": []}, "favorite_count": 0, "favorited": false, "full_text": "Official sponsor of UCL is Qatar Airways", "id_str": "2052306630792884571", "is_quote_status": true, "lang": "en", "quote_count": 0, "quoted_status_id_str": "2052305397583626713", "quoted_status_permalink": {"display": "x.com/Akomeahmessia/…", "expanded": "https://twitter.com/Akomeahmessia/status/2052305397583626713", "url": "https://t.co/H0vR4svhyW"}, "reply_count": 2, "retweet_count": 0, "retweeted": false, "user_id_str": "803696970766450688"}, "quoted_status_result": {"result": {"__typename": "Tweet", "core": {"user_results": {"result": {"__typename": "User", "affiliates_highlighted_label": {}, "has_graduated_access": true, "id": "VXNlcjoyMDUxMzQzOTUyNTY1OTUyNTEy", "is_blue_verified": false, "legacy": {"blocked_by": false, "blocking": false, "can_dm": false, "can_media_tag": true, "created_at": "Mon May 04 16:52:45 +0000 2026", "default_profile": true, "default_profile_image": false, "description": "backup account(@Akomeahmessiah)/CAF/FIFA Accredited journalist/GPL analyst/TV/Radio Broadcast journalist/love storytelling", "entities": {"description": {}}, "fast_followers_count": 0, "favourites_count": 66, "follow_request_sent": false, "followed_by": false, "followers_count": 2886, "following": false, "friends_count": 207, "has_custom_timelines": false, "is_translator": false, "listed_count": 0, "location": "", "media_count": 4, "muting": false, "name": "Akomeah Messiah", "needs_phone_verification": false, "normal_followers_count": 2886, "notifications": false, "possibly_sensitive": false, "profile_banner_url": "https://pbs.twimg.com/profile_banners/2051343952565952512/1777914460", "profile_image_url_https": "https://pbs.twimg.com/profile_images/2051344909332803584/dbW1VRcS_normal.jpg", "profile_interstitial_type": "", "protected": false, "screen_name": "Akomeahmessia", "statuses_count": 182, "time_zone": "", "translator_type": "none", "url": "", "utc_offset": 0, "verified": false, "want_retweets": false, "withheld_description": "", "withheld_scope": ""}, "profile_image_shape": "Circle", "rest_id": "2051343952565952512", "super_follow_eligible": false, "super_followed_by": false, "super_following": false, "tipjar_settings": {}}}}, "edit_control": {"edit_tweet_ids": ["2052305397583626713"], "editable_until_msecs": "1778146311000", "edits_remaining": "5", "is_edit_eligible": true}, "is_translatable": false, "legacy": {"bookmark_count": 0, "bookmarked": false, "conversation_id_str": "2052305397583626713", "created_at": "Thu May 07 08:31:51 +0000 2026", "display_text_range": [0, 55], "entities": {"hashtags": [], "symbols": [], "timestamps": [], "urls": [], "user_mentions": []}, "favorite_count": 17, "favorited": false, "full_text": "Arsenal will be playing against a very good team and…….", "id_str": "2052305397583626713", "is_quote_status": true, "lang": "en", "quote_count": 2, "quoted_status_id_str": "2052126892342317272", "quoted_status_permalink": {"display": "x.com/az_bassit/stat…", "expanded": "https://twitter.com/az_bassit/status/2052126892342317272", "url": "https://t.co/TulUTUhcbG"}, "reply_count": 1, "retweet_count": 2, "retweeted": false, "user_id_str": "2051343952565952512"}, "quotedRefResult": {"result": {"__typename": "Tweet", "rest_id": "2052126892342317272"}}, "rest_id": "2052305397583626713", "source": "<a href=\"http://twitter.com/download/iphone\" rel=\"nofollow\">Twitter for iPhone</a>", "unmention_data": {}, "views": {"count": "411", "state": "EnabledWithCount"}}}, "rest_id": "2052306630792884571", "source": "<a href=\"http://twitter.com/download/android\" rel=\"nofollow\">Twitter for Android</a>", "unmention_data": {}, "views": {"count": "25", "state": "EnabledWithCount"}}}}, "item_typename": "TimelineTweet", "item_highlights": {"textHighlights": [{"endIndex": 32, "startIndex": 27}, {"endIndex": 40, "startIndex": 33}]}, "item_type": "TimelineTweet", "tweet_display_type": "Tweet", "tweet_results": {"result": {"__typename": "Tweet", "core": {"user_results": {"result": {"__typename": "User", "affiliates_highlighted_label": {}, "has_graduated_access": true, "id": "VXNlcjo4MDM2OTY5NzA3NjY0NTA2ODg=", "is_blue_verified": false, "legacy": {"blocked_by": false, "blocking": false, "can_dm": false, "can_media_tag": false, "created_at": "Tue Nov 29 20:27:44 +0000 2016", "default_profile": true, "default_profile_image": false, "description": "Once again, lover of Jose and Simeone", "entities": {"description": {}}, "fast_followers_count": 0, "favourites_count": 38058, "follow_request_sent": false, "followed_by": false, "followers_count": 383, "following": false, "friends_count": 1016, "has_custom_timelines": true, "is_translator": false, "listed_count": 0, "location": "Kumasi ,Ghana", "media_count": 775, "muting": false, "name": "NZ22 ❤️🫂", "needs_phone_verification": false, "normal_followers_count": 383, "notifications": false, "pinned_tweet_ids_str": ["1973188517481365898"], "possibly_sensitive": false, "profile_banner_url": "https://pbs.twimg.com/profile_banners/803696970766450688/1736977744", "profile_image_url_https": "https://pbs.twimg.com/profile_images/1944684635079712768/qzQ6M5vE_normal.jpg", "profile_interstitial_type": "", "protected": false, "screen_name": "peprahjones1", "statuses_count": 36729, "time_zone": "", "translator_type": "none", "url": "", "utc_offset": 0, "verified": false, "want_retweets": false, "withheld_description": "", "withheld_scope": ""}, "professional": {"category": [], "professional_type": "Creator", "rest_id": "1605353153452441601"}, "profile_image_shape": "Circle", "rest_id": "803696970766450688", "super_follow_eligible": false, "super_followed_by": false, "super_following": false, "tipjar_settings": {}}}}, "edit_control": {"edit_tweet_ids": ["2052306630792884571"], "editable_until_msecs": "1778146605000", "edits_remaining": "5", "is_edit_eligible": true}, "is_translatable": false, "legacy": {"bookmark_count": 0, "bookmarked": false, "conversation_id_str": "2052306630792884571", "created_at": "Thu May 07 08:36:45 +0000 2026", "display_text_range": [0, 40], "entities": {"hashtags": [], "symbols": [], "timestamps": [], "urls": [], "user_mentions": []}, "favorite_count": 0, "favorited": false, "full_text": "Official sponsor of UCL is Qatar Airways", "id_str": "2052306630792884571", "is_quote_status": true, "lang": "en", "quote_count": 0, "quoted_status_id_str": "2052305397583626713", "quoted_status_permalink": {"display": "x.com/Akomeahmessia/…", "expanded": "https://twitter.com/Akomeahmessia/status/2052305397583626713", "url": "https://t.co/H0vR4svhyW"}, "reply_count": 2, "retweet_count": 0, "retweeted": false, "user_id_str": "803696970766450688"}, "quoted_status_result": {"result": {"__typename": "Tweet", "core": {"user_results": {"result": {"__typename": "User", "affiliates_highlighted_label": {}, "has_graduated_access": true, "id": "VXNlcjoyMDUxMzQzOTUyNTY1OTUyNTEy", "is_blue_verified": false, "legacy": {"blocked_by": false, "blocking": false, "can_dm": false, "can_media_tag": true, "created_at": "Mon May 04 16:52:45 +0000 2026", "default_profile": true, "default_profile_image": false, "description": "backup account(@Akomeahmessiah)/CAF/FIFA Accredited journalist/GPL analyst/TV/Radio Broadcast journalist/love storytelling", "entities": {"description": {}}, "fast_followers_count": 0, "favourites_count": 66, "follow_request_sent": false, "followed_by": false, "followers_count": 2886, "following": false, "friends_count": 207, "has_custom_timelines": false, "is_translator": false, "listed_count": 0, "location": "", "media_count": 4, "muting": false, "name": "Akomeah Messiah", "needs_phone_verification": false, "normal_followers_count": 2886, "notifications": false, "possibly_sensitive": false, "profile_banner_url": "https://pbs.twimg.com/profile_banners/2051343952565952512/1777914460", "profile_image_url_https": "https://pbs.twimg.com/profile_images/2051344909332803584/dbW1VRcS_normal.jpg", "profile_interstitial_type": "", "protected": false, "screen_name": "Akomeahmessia", "statuses_count": 182, "time_zone": "", "translator_type": "none", "url": "", "utc_offset": 0, "verified": false, "want_retweets": false, "withheld_description": "", "withheld_scope": ""}, "profile_image_shape": "Circle", "rest_id": "2051343952565952512", "super_follow_eligible": false, "super_followed_by": false, "super_following": false, "tipjar_settings": {}}}}, "edit_control": {"edit_tweet_ids": ["2052305397583626713"], "editable_until_msecs": "1778146311000", "edits_remaining": "5", "is_edit_eligible": true}, "is_translatable": false, "legacy": {"bookmark_count": 0, "bookmarked": false, "conversation_id_str": "2052305397583626713", "created_at": "Thu May 07 08:31:51 +0000 2026", "display_text_range": [0, 55], "entities": {"hashtags": [], "symbols": [], "timestamps": [], "urls": [], "user_mentions": []}, "favorite_count": 17, "favorited": false, "full_text": "Arsenal will be playing against a very good team and…….", "id_str": "2052305397583626713", "is_quote_status": true, "lang": "en", "quote_count": 2, "quoted_status_id_str": "2052126892342317272", "quoted_status_permalink": {"display": "x.com/az_bassit/stat…", "expanded": "https://twitter.com/az_bassit/status/2052126892342317272", "url": "https://t.co/TulUTUhcbG"}, "reply_count": 1, "retweet_count": 2, "retweeted": false, "user_id_str": "2051343952565952512"}, "quotedRefResult": {"result": {"__typename": "Tweet", "rest_id": "2052126892342317272"}}, "rest_id": "2052305397583626713", "source": "<a href=\"http://twitter.com/download/iphone\" rel=\"nofollow\">Twitter for iPhone</a>", "unmention_data": {}, "views": {"count": "411", "state": "EnabledWithCount"}}}, "rest_id": "2052306630792884571", "source": "<a href=\"http://twitter.com/download/android\" rel=\"nofollow\">Twitter for Android</a>", "unmention_data": {}, "views": {"count": "25", "state": "EnabledWithCount"}}}, "tweet": {"__typename": "Tweet", "core": {"user_results": {"result": {"__typename": "User", "affiliates_highlighted_label": {}, "has_graduated_access": true, "id": "VXNlcjo4MDM2OTY5NzA3NjY0NTA2ODg=", "is_blue_verified": false, "legacy": {"blocked_by": false, "blocking": false, "can_dm": false, "can_media_tag": false, "created_at": "Tue Nov 29 20:27:44 +0000 2016", "default_profile": true, "default_profile_image": false, "description": "Once again, lover of Jose and Simeone", "entities": {"description": {}}, "fast_followers_count": 0, "favourites_count": 38058, "follow_request_sent": false, "followed_by": false, "followers_count": 383, "following": false, "friends_count": 1016, "has_custom_timelines": true, "is_translator": false, "listed_count": 0, "location": "Kumasi ,Ghana", "media_count": 775, "muting": false, "name": "NZ22 ❤️🫂", "needs_phone_verification": false, "normal_followers_count": 383, "notifications": false, "pinned_tweet_ids_str": ["1973188517481365898"], "possibly_sensitive": false, "profile_banner_url": "https://pbs.twimg.com/profile_banners/803696970766450688/1736977744", "profile_image_url_https": "https://pbs.twimg.com/profile_images/1944684635079712768/qzQ6M5vE_normal.jpg", "profile_interstitial_type": "", "protected": false, "screen_name": "peprahjones1", "statuses_count": 36729, "time_zone": "", "translator_type": "none", "url": "", "utc_offset": 0, "verified": false, "want_retweets": false, "withheld_description": "", "withheld_scope": ""}, "professional": {"category": [], "professional_type": "Creator", "rest_id": "1605353153452441601"}, "profile_image_shape": "Circle", "rest_id": "803696970766450688", "super_follow_eligible": false, "super_followed_by": false, "super_following": false, "tipjar_settings": {}}}}, "edit_control": {"edit_tweet_ids": ["2052306630792884571"], "editable_until_msecs": "1778146605000", "edits_remaining": "5", "is_edit_eligible": true}, "is_translatable": false, "legacy": {"bookmark_count": 0, "bookmarked": false, "conversation_id_str": "2052306630792884571", "created_at": "Thu May 07 08:36:45 +0000 2026", "display_text_range": [0, 40], "entities": {"hashtags": [], "symbols": [], "timestamps": [], "urls": [], "user_mentions": []}, "favorite_count": 0, "favorited": false, "full_text": "Official sponsor of UCL is Qatar Airways", "id_str": "2052306630792884571", "is_quote_status": true, "lang": "en", "quote_count": 0, "quoted_status_id_str": "2052305397583626713", "quoted_status_permalink": {"display": "x.com/Akomeahmessia/…", "expanded": "https://twitter.com/Akomeahmessia/status/2052305397583626713", "url": "https://t.co/H0vR4svhyW"}, "reply_count": 2, "retweet_count": 0, "retweeted": false, "user_id_str": "803696970766450688"}, "quoted_status_result": {"result": {"__typename": "Tweet", "core": {"user_results": {"result": {"__typename": "User", "affiliates_highlighted_label": {}, "has_graduated_access": true, "id": "VXNlcjoyMDUxMzQzOTUyNTY1OTUyNTEy", "is_blue_verified": false, "legacy": {"blocked_by": false, "blocking": false, "can_dm": false, "can_media_tag": true, "created_at": "Mon May 04 16:52:45 +0000 2026", "default_profile": true, "default_profile_image": false, "description": "backup account(@Akomeahmessiah)/CAF/FIFA Accredited journalist/GPL analyst/TV/Radio Broadcast journalist/love storytelling", "entities": {"description": {}}, "fast_followers_count": 0, "favourites_count": 66, "follow_request_sent": false, "followed_by": false, "followers_count": 2886, "following": false, "friends_count": 207, "has_custom_timelines": false, "is_translator": false, "listed_count": 0, "location": "", "media_count": 4, "muting": false, "name": "Akomeah Messiah", "needs_phone_verification": false, "normal_followers_count": 2886, "notifications": false, "possibly_sensitive": false, "profile_banner_url": "https://pbs.twimg.com/profile_banners/2051343952565952512/1777914460", "profile_image_url_https": "https://pbs.twimg.com/profile_images/2051344909332803584/dbW1VRcS_normal.jpg", "profile_interstitial_type": "", "protected": false, "screen_name": "Akomeahmessia", "statuses_count": 182, "time_zone": "", "translator_type": "none", "url": "", "utc_offset": 0, "verified": false, "want_retweets": false, "withheld_description": "", "withheld_scope": ""}, "profile_image_shape": "Circle", "rest_id": "2051343952565952512", "super_follow_eligible": false, "super_followed_by": false, "super_following": false, "tipjar_settings": {}}}}, "edit_control": {"edit_tweet_ids": ["2052305397583626713"], "editable_until_msecs": "1778146311000", "edits_remaining": "5", "is_edit_eligible": true}, "is_translatable": false, "legacy": {"bookmark_count": 0, "bookmarked": false, "conversation_id_str": "2052305397583626713", "created_at": "Thu May 07 08:31:51 +0000 2026", "display_text_range": [0, 55], "entities": {"hashtags": [], "symbols": [], "timestamps": [], "urls": [], "user_mentions": []}, "favorite_count": 17, "favorited": false, "full_text": "Arsenal will be playing against a very good team and…….", "id_str": "2052305397583626713", "is_quote_status": true, "lang": "en", "quote_count": 2, "quoted_status_id_str": "2052126892342317272", "quoted_status_permalink": {"display": "x.com/az_bassit/stat…", "expanded": "https://twitter.com/az_bassit/status/2052126892342317272", "url": "https://t.co/TulUTUhcbG"}, "reply_count": 1, "retweet_count": 2, "retweeted": false, "user_id_str": "2051343952565952512"}, "quotedRefResult": {"result": {"__typename": "Tweet", "rest_id": "2052126892342317272"}}, "rest_id": "2052305397583626713", "source": "<a href=\"http://twitter.com/download/iphone\" rel=\"nofollow\">Twitter for iPhone</a>", "unmention_data": {}, "views": {"count": "411", "state": "EnabledWithCount"}}}, "rest_id": "2052306630792884571", "source": "<a href=\"http://twitter.com/download/android\" rel=\"nofollow\">Twitter for Android</a>", "unmention_data": {}, "views": {"count": "25", "state": "EnabledWithCount"}}, "tweet_typename": "Tweet", "tweet_core": {"user_results": {"result": {"__typename": "User", "affiliates_highlighted_label": {}, "has_graduated_access": true, "id": "VXNlcjo4MDM2OTY5NzA3NjY0NTA2ODg=", "is_blue_verified": false, "legacy": {"blocked_by": false, "blocking": false, "can_dm": false, "can_media_tag": false, "created_at": "Tue Nov 29 20:27:44 +0000 2016", "default_profile": true, "default_profile_image": false, "description": "Once again, lover of Jose and Simeone", "entities": {"description": {}}, "fast_followers_count": 0, "favourites_count": 38058, "follow_request_sent": false, "followed_by": false, "followers_count": 383, "following": false, "friends_count": 1016, "has_custom_timelines": true, "is_translator": false, "listed_count": 0, "location": "Kumasi ,Ghana", "media_count": 775, "muting": false, "name": "NZ22 ❤️🫂", "needs_phone_verification": false, "normal_followers_count": 383, "notifications": false, "pinned_tweet_ids_str": ["1973188517481365898"], "possibly_sensitive": false, "profile_banner_url": "https://pbs.twimg.com/profile_banners/803696970766450688/1736977744", "profile_image_url_https": "https://pbs.twimg.com/profile_images/1944684635079712768/qzQ6M5vE_normal.jpg", "profile_interstitial_type": "", "protected": false, "screen_name": "peprahjones1", "statuses_count": 36729, "time_zone": "", "translator_type": "none", "url": "", "utc_offset": 0, "verified": false, "want_retweets": false, "withheld_description": "", "withheld_scope": ""}, "professional": {"category": [], "professional_type": "Creator", "rest_id": "1605353153452441601"}, "profile_image_shape": "Circle", "rest_id": "803696970766450688", "super_follow_eligible": false, "super_followed_by": false, "super_following": false, "tipjar_settings": {}}}}, "tweet_edit_control": {"edit_tweet_ids": ["2052306630792884571"], "editable_until_msecs": "1778146605000", "edits_remaining": "5", "is_edit_eligible": true}, "tweet_is_translatable": false, "tweet_legacy": {"bookmark_count": 0, "bookmarked": false, "conversation_id_str": "2052306630792884571", "created_at": "Thu May 07 08:36:45 +0000 2026", "display_text_range": [0, 40], "entities": {"hashtags": [], "symbols": [], "timestamps": [], "urls": [], "user_mentions": []}, "favorite_count": 0, "favorited": false, "full_text": "Official sponsor of UCL is Qatar Airways", "id_str": "2052306630792884571", "is_quote_status": true, "lang": "en", "quote_count": 0, "quoted_status_id_str": "2052305397583626713", "quoted_status_permalink": {"display": "x.com/Akomeahmessia/…", "expanded": "https://twitter.com/Akomeahmessia/status/2052305397583626713", "url": "https://t.co/H0vR4svhyW"}, "reply_count": 2, "retweet_count": 0, "retweeted": false, "user_id_str": "803696970766450688"}, "tweet_rest_id": "2052306630792884571", "tweet_source": "<a href=\"http://twitter.com/download/android\" rel=\"nofollow\">Twitter for Android</a>", "tweet_unmention_data": {}, "tweet_views": {"count": "25", "state": "EnabledWithCount"}, "tweet_entities": {"hashtags": [], "symbols": [], "timestamps": [], "urls": [], "user_mentions": []}, "tweet_extended_entities": {}, "user_results": {"result": {"__typename": "User", "affiliates_highlighted_label": {}, "has_graduated_access": true, "id": "VXNlcjo4MDM2OTY5NzA3NjY0NTA2ODg=", "is_blue_verified": false, "legacy": {"blocked_by": false, "blocking": false, "can_dm": false, "can_media_tag": false, "created_at": "Tue Nov 29 20:27:44 +0000 2016", "default_profile": true, "default_profile_image": false, "description": "Once again, lover of Jose and Simeone", "entities": {"description": {}}, "fast_followers_count": 0, "favourites_count": 38058, "follow_request_sent": false, "followed_by": false, "followers_count": 383, "following": false, "friends_count": 1016, "has_custom_timelines": true, "is_translator": false, "listed_count": 0, "location": "Kumasi ,Ghana", "media_count": 775, "muting": false, "name": "NZ22 ❤️🫂", "needs_phone_verification": false, "normal_followers_count": 383, "notifications": false, "pinned_tweet_ids_str": ["1973188517481365898"], "possibly_sensitive": false, "profile_banner_url": "https://pbs.twimg.com/profile_banners/803696970766450688/1736977744", "profile_image_url_https": "https://pbs.twimg.com/profile_images/1944684635079712768/qzQ6M5vE_normal.jpg", "profile_interstitial_type": "", "protected": false, "screen_name": "peprahjones1", "statuses_count": 36729, "time_zone": "", "translator_type": "none", "url": "", "utc_offset": 0, "verified": false, "want_retweets": false, "withheld_description": "", "withheld_scope": ""}, "professional": {"category": [], "professional_type": "Creator", "rest_id": "1605353153452441601"}, "profile_image_shape": "Circle", "rest_id": "803696970766450688", "super_follow_eligible": false, "super_followed_by": false, "super_following": false, "tipjar_settings": {}}}, "user": {"__typename": "User", "affiliates_highlighted_label": {}, "has_graduated_access": true, "id": "VXNlcjo4MDM2OTY5NzA3NjY0NTA2ODg=", "is_blue_verified": false, "legacy": {"blocked_by": false, "blocking": false, "can_dm": false, "can_media_tag": false, "created_at": "Tue Nov 29 20:27:44 +0000 2016", "default_profile": true, "default_profile_image": false, "description": "Once again, lover of Jose and Simeone", "entities": {"description": {}}, "fast_followers_count": 0, "favourites_count": 38058, "follow_request_sent": false, "followed_by": false, "followers_count": 383, "following": false, "friends_count": 1016, "has_custom_timelines": true, "is_translator": false, "listed_count": 0, "location": "Kumasi ,Ghana", "media_count": 775, "muting": false, "name": "NZ22 ❤️🫂", "needs_phone_verification": false, "normal_followers_count": 383, "notifications": false, "pinned_tweet_ids_str": ["1973188517481365898"], "possibly_sensitive": false, "profile_banner_url": "https://pbs.twimg.com/profile_banners/803696970766450688/1736977744", "profile_image_url_https": "https://pbs.twimg.com/profile_images/1944684635079712768/qzQ6M5vE_normal.jpg", "profile_interstitial_type": "", "protected": false, "screen_name": "peprahjones1", "statuses_count": 36729, "time_zone": "", "translator_type": "none", "url": "", "utc_offset": 0, "verified": false, "want_retweets": false, "withheld_description": "", "withheld_scope": ""}, "professional": {"category": [], "professional_type": "Creator", "rest_id": "1605353153452441601"}, "profile_image_shape": "Circle", "rest_id": "803696970766450688", "super_follow_eligible": false, "super_followed_by": false, "super_following": false, "tipjar_settings": {}}, "user_typename": "User", "user_affiliates_highlighted_label": {}, "user_has_graduated_access": true, "user_id": "VXNlcjo4MDM2OTY5NzA3NjY0NTA2ODg=", "user_is_blue_verified": false, "user_legacy": {"blocked_by": false, "blocking": false, "can_dm": false, "can_media_tag": false, "created_at": "Tue Nov 29 20:27:44 +0000 2016", "default_profile": true, "default_profile_image": false, "description": "Once again, lover of Jose and Simeone", "entities": {"description": {}}, "fast_followers_count": 0, "favourites_count": 38058, "follow_request_sent": false, "followed_by": false, "followers_count": 383, "following": false, "friends_count": 1016, "has_custom_timelines": true, "is_translator": false, "listed_count": 0, "location": "Kumasi ,Ghana", "media_count": 775, "muting": false, "name": "NZ22 ❤️🫂", "needs_phone_verification": false, "normal_followers_count": 383, "notifications": false, "pinned_tweet_ids_str": ["1973188517481365898"], "possibly_sensitive": false, "profile_banner_url": "https://pbs.twimg.com/profile_banners/803696970766450688/1736977744", "profile_image_url_https": "https://pbs.twimg.com/profile_images/1944684635079712768/qzQ6M5vE_normal.jpg", "profile_interstitial_type": "", "protected": false, "screen_name": "peprahjones1", "statuses_count": 36729, "time_zone": "", "translator_type": "none", "url": "", "utc_offset": 0, "verified": false, "want_retweets": false, "withheld_description": "", "withheld_scope": ""}, "user_professional": {"category": [], "professional_type": "Creator", "rest_id": "1605353153452441601"}, "user_profile_image_shape": "Circle", "user_rest_id": "803696970766450688", "user_super_follow_eligible": false, "user_super_followed_by": false, "user_super_following": false, "user_tipjar_settings": {}, "user_legacy_entities": {"description": {}}, "user_legacy_description_entities": {}, "user_legacy_url_entities": {}, "user_legacy_url_urls": [], "user_professional_category": []}, "author_metadata": {"author_type": "User", "platform_user_id": "803696970766450688", "platform_encoded_user_id": "VXNlcjo4MDM2OTY5NzA3NjY0NTA2ODg=", "username": "peprahjones1", "display_name": "NZ22 ❤️🫂", "description": "Once again, lover of Jose and Simeone", "location": "Kumasi ,Ghana", "created_at": "Tue Nov 29 20:27:44 +0000 2016", "profile_url": "", "profile_image_url": "https://pbs.twimg.com/profile_images/1944684635079712768/qzQ6M5vE_normal.jpg", "profile_banner_url": "https://pbs.twimg.com/profile_banners/803696970766450688/1736977744", "profile_image_shape": "Circle", "is_blue_verified": false, "verified": false, "verified_type": null, "protected": false, "possibly_sensitive": false, "followers_count": 383, "normal_followers_count": 383, "following_count": 1016, "favourites_count": 38058, "listed_count": 0, "media_count": 775, "statuses_count": 36729, "fast_followers_count": 0, "can_dm": false, "can_media_tag": false, "default_profile": true, "default_profile_image": false, "has_custom_timelines": true, "has_graduated_access": true, "is_translator": false, "translator_type": "none", "time_zone": "", "utc_offset": 0, "professional_type": "Creator", "professional_rest_id": "1605353153452441601", "professional_category_id": null, "professional_category_name": null, "professional_category_icon_name": null, "pinned_tweet_ids": ["1973188517481365898"], "affiliates_highlighted_label": {}, "tipjar_settings": {}, "withheld_description": "", "withheld_scope": ""}, "author_relationship_metadata": {"blocked_by": false, "blocking": false, "follow_request_sent": false, "followed_by": false, "following": false, "muting": false, "notifications": false, "want_retweets": false, "super_follow_eligible": false, "super_followed_by": false, "super_following": false}, "author_profile_links": [], "tweet_metadata": {"tweet_type": "Tweet", "tweet_id": "2052306630792884571", "source": "<a href=\"http://twitter.com/download/android\" rel=\"nofollow\">Twitter for Android</a>", "is_translatable": false, "unmention_data": {}, "item_type": "TimelineTweet", "item_typename": "TimelineTweet", "tweet_display_type": "Tweet", "root_typename": "TimelineTimelineItem", "root_entry_type": "TimelineTimelineItem"}, "edit_metadata": {"edit_tweet_ids": ["2052306630792884571"], "editable_until_msecs": "1778146605000", "edits_remaining": "5", "is_edit_eligible": true}, "view_metadata": {"view_count": 25, "view_state": "EnabledWithCount"}, "timeline_metadata": {"client_component": "result", "client_element": "tweet", "controller_data": "DAACDAAFDAABDAABDAABCgABAAAAAAACAAAAAAwAAgoAAQAAAAAAAAABCgACNv6WqjnSJQALAAMAAAANcWF0YXJfYWlyd2F5cwoABW0CgQFyeqdPCAAGAAAAAQoAByeHVKMO27sBCgAIAAABngGmDQAAAAAAAA==", "feedback_keys": ["-2134788070"], "text_highlights": [{"endIndex": 32, "startIndex": 27}, {"endIndex": 40, "startIndex": 33}]}, "engagement_metadata": {"like_count": 0, "reshare_count": 0, "response_count": 2, "quote_count": 0, "bookmark_count": 0, "view_count": 25, "view_state": "EnabledWithCount", "favorited_by_viewer": false, "retweeted_by_viewer": false, "bookmarked_by_viewer": false}, "content_metadata": {"tweet_id": "2052306630792884571", "text": "Official sponsor of UCL is Qatar Airways", "language": "en", "created_at": "Thu May 07 08:36:45 +0000 2026", "display_text_range": [0, 40], "possibly_sensitive": null, "possibly_sensitive_editable": null}, "conversation_metadata": {"conversation_id": "2052306630792884571", "is_quote_status": true, "author_user_id": "803696970766450688"}, "entity_metadata": {"hashtags": [], "urls": [], "user_mentions": [], "symbols": [], "raw_entities": {"hashtags": [], "symbols": [], "timestamps": [], "urls": [], "user_mentions": []}}, "media_metadata": {"media": [], "raw_extended_entities": {}}}};
+
+let nodeCount = 0;
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function buildNode(value, key, isLast, depth) {
+  const id = 'n' + (nodeCount++);
+  const comma = isLast ? '' : '<span class="comma">,</span>';
+  const indent = depth > 0 ? '' : '';
+
+  if (value === null) {
+    const keyHtml = key !== null ? `<span class="k">"${esc(key)}"</span><span class="colon">:</span>` : '';
+    return `<div class="node-line"><span class="toggle-spacer"></span>${keyHtml}<span class="nl">null</span>${comma}</div>`;
+  }
+
+  if (typeof value === 'boolean') {
+    const keyHtml = key !== null ? `<span class="k">"${esc(key)}"</span><span class="colon">:</span>` : '';
+    return `<div class="node-line"><span class="toggle-spacer"></span>${keyHtml}<span class="b">${value}</span>${comma}</div>`;
+  }
+
+  if (typeof value === 'number') {
+    const keyHtml = key !== null ? `<span class="k">"${esc(key)}"</span><span class="colon">:</span>` : '';
+    return `<div class="node-line"><span class="toggle-spacer"></span>${keyHtml}<span class="n">${value}</span>${comma}</div>`;
+  }
+
+  if (typeof value === 'string') {
+    const keyHtml = key !== null ? `<span class="k">"${esc(key)}"</span><span class="colon">:</span>` : '';
+    return `<div class="node-line"><span class="toggle-spacer"></span>${keyHtml}<span class="s">"${esc(value)}"</span>${comma}</div>`;
+  }
+
+  if (Array.isArray(value)) {
+    const keyHtml = key !== null ? `<span class="k">"${esc(key)}"</span><span class="colon">:</span>` : '';
+    if (value.length === 0) {
+      return `<div class="node-line"><span class="toggle-spacer"></span>${keyHtml}<span class="br">[]</span>${comma}</div>`;
+    }
+    // flat primitive arrays on one line
+    if (value.every(v => typeof v !== 'object' || v === null)) {
+      const items = value.map(v => typeof v === 'string' ? `<span class="s">"${esc(v)}"</span>` : `<span class="n">${v}</span>`).join('<span class="comma">, </span>');
+      return `<div class="node-line"><span class="toggle-spacer"></span>${keyHtml}<span class="br">[</span>${items}<span class="br">]</span>${comma}</div>`;
+    }
+    const children = value.map((v, i) => buildNode(v, null, i === value.length - 1, depth + 1)).join('');
+    const preview = `<span class="inline-preview">${value.length} items</span>`;
+    return `
+      <div class="node">
+        <div class="node-line">
+          <span class="toggle" onclick="toggleNode('${id}')" data-id="${id}">−</span>
+          ${keyHtml}<span class="br">[</span>${preview}
+        </div>
+        <div class="indent" id="${id}">
+          ${children}
+          <div class="node-line"><span class="toggle-spacer"></span><span class="br">]</span>${comma}</div>
+        </div>
+      </div>`;
+  }
+
+  if (typeof value === 'object') {
+    const keys = Object.keys(value);
+    const keyHtml = key !== null ? `<span class="k">"${esc(key)}"</span><span class="colon">:</span>` : '';
+    if (keys.length === 0) {
+      return `<div class="node-line"><span class="toggle-spacer"></span>${keyHtml}<span class="br">{}</span>${comma}</div>`;
+    }
+    const children = keys.map((k, i) => buildNode(value[k], k, i === keys.length - 1, depth + 1)).join('');
+    const preview = `<span class="inline-preview">{${keys.length} keys}</span>`;
+    return `
+      <div class="node">
+        <div class="node-line">
+          <span class="toggle" onclick="toggleNode('${id}')" data-id="${id}">−</span>
+          ${keyHtml}<span class="br">{</span>${preview}
+        </div>
+        <div class="indent" id="${id}">
+          ${children}
+          <div class="node-line"><span class="toggle-spacer"></span><span class="br">}</span>${comma}</div>
+        </div>
+      </div>`;
+  }
+
+  return '';
+}
+
+function toggleNode(id) {
+  const el = document.getElementById(id);
+  const btn = document.querySelector(`[onclick="toggleNode('${id}')"]`);
+  if (!el) return;
+  const collapsed = el.classList.toggle('collapsed');
+  btn.textContent = collapsed ? '+' : '−';
+}
+
+function expandAll() {
+  document.querySelectorAll('.indent').forEach(el => el.classList.remove('collapsed'));
+  document.querySelectorAll('.toggle').forEach(btn => btn.textContent = '−');
+}
+
+function collapseAll() {
+  document.querySelectorAll('.indent').forEach(el => el.classList.add('collapsed'));
+  document.querySelectorAll('.toggle').forEach(btn => btn.textContent = '+');
+}
+
+// Render root
+const keys = Object.keys(DATA);
+const rootId = 'n' + (nodeCount++);
+const children = keys.map((k, i) => buildNode(DATA[k], k, i === keys.length - 1, 1)).join('');
+document.getElementById('tree').innerHTML = `
+  <div class="node">
+    <div class="node-line">
+      <span class="toggle" onclick="toggleNode('${rootId}')" data-id="${rootId}">−</span>
+      <span class="br">{</span>
+    </div>
+    <div class="indent" id="${rootId}">
+      ${children}
+      <div class="node-line"><span class="toggle-spacer"></span><span class="br">}</span></div>
+    </div>
+  </div>`;
+</script>
+</body>
+</html>
