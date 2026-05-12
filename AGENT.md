@@ -1,0 +1,2 @@
+- Always Program in Light Mode
+- Keep the layout minimalistic and simple. It's not supposed to be a comprehensive showcase. 
