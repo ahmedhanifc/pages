@@ -1,0 +1,1422 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Benchmark Metrics Dashboard</title>
+  <style>
+    :root {
+      --accent: #f31767;
+      --accent-soft: #ffe2ed;
+      --ink: #15171a;
+      --muted: #667085;
+      --line: #e6e8ec;
+      --panel: #ffffff;
+      --surface: #f8f9fb;
+      --shadow: 0 18px 45px rgba(21, 23, 26, 0.08);
+      color-scheme: light;
+      font-family: "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(21, 23, 26, 0.035) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(21, 23, 26, 0.035) 1px, transparent 1px),
+        #ffffff;
+      background-size: 28px 28px;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .shell {
+      width: min(1440px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 32px 0 48px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 20px;
+      padding: 10px 0 24px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 42px;
+      height: 42px;
+      flex: 0 0 auto;
+      border: 1px solid var(--ink);
+      background: var(--accent);
+      color: #ffffff;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    .brand-title {
+      margin: 0;
+      font-size: clamp(1.4rem, 2.6vw, 2.35rem);
+      line-height: 1.02;
+      letter-spacing: 0;
+    }
+
+    .brand-subtitle {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(130px, 1fr));
+      gap: 12px;
+      align-items: end;
+      padding: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: var(--shadow);
+    }
+
+    .field {
+      min-width: 0;
+    }
+
+    .field label {
+      display: block;
+      margin: 0 0 6px;
+      color: var(--muted);
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .field select,
+    .file-label {
+      width: 100%;
+      min-height: 40px;
+      border: 1px solid #cfd4dc;
+      border-radius: 0;
+      background: #ffffff;
+      color: var(--ink);
+      padding: 8px 10px;
+      outline: none;
+    }
+
+    .field select:focus,
+    .file-label:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(243, 23, 103, 0.15);
+    }
+
+    .file-label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-weight: 800;
+      color: var(--accent);
+      cursor: pointer;
+    }
+
+    .file-label input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.96);
+      box-shadow: var(--shadow);
+    }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.45fr) minmax(360px, 0.9fr);
+      gap: 18px;
+      align-items: start;
+      margin-top: 18px;
+    }
+
+    .panel {
+      min-width: 0;
+      margin-bottom: 18px;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .panel-title {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 850;
+      letter-spacing: 0;
+    }
+
+    .panel-subtitle {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 0.84rem;
+    }
+
+    .panel-action {
+      flex: 0 0 auto;
+      border: 1px solid var(--ink);
+      background: var(--ink);
+      color: #ffffff;
+      padding: 8px 11px;
+      font-size: 0.82rem;
+      font-weight: 800;
+    }
+
+    .panel-body {
+      padding: 18px;
+    }
+
+    .chart {
+      display: grid;
+      gap: 14px;
+    }
+
+    .chart-group {
+      display: grid;
+      grid-template-columns: minmax(142px, 0.3fr) minmax(0, 1fr);
+      gap: 12px;
+      align-items: start;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .chart-group:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .chart-label {
+      min-width: 0;
+      font-weight: 850;
+      line-height: 1.25;
+    }
+
+    .chart-label span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+
+    .bar-stack {
+      display: grid;
+      gap: 8px;
+    }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: minmax(90px, 140px) minmax(0, 1fr) 56px;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .bar-model {
+      min-width: 0;
+      overflow: hidden;
+      color: var(--muted);
+      font-size: 0.84rem;
+      font-weight: 800;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .bar-track {
+      height: 20px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      min-width: 2px;
+      background: var(--bar-color);
+    }
+
+    .bar-score {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      font-size: 0.84rem;
+      font-weight: 850;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 760px;
+    }
+
+    th,
+    td {
+      padding: 11px 10px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: middle;
+      font-size: 0.88rem;
+    }
+
+    th {
+      color: var(--muted);
+      background: #fbfcfd;
+      font-size: 0.72rem;
+      font-weight: 850;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      white-space: nowrap;
+    }
+
+    tbody tr:hover {
+      background: #fff7fa;
+    }
+
+    .num {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .model-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 24px;
+      color: var(--ink);
+      font-weight: 850;
+      white-space: nowrap;
+    }
+
+    .model-dot {
+      width: 10px;
+      height: 10px;
+      flex: 0 0 auto;
+      background: var(--model-color);
+    }
+
+    .score-cell {
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      min-width: 68px;
+      padding: 5px 8px;
+      background: var(--surface);
+      color: var(--ink);
+      font-weight: 850;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .score-cell.best {
+      background: var(--accent);
+      color: #ffffff;
+    }
+
+    .score-meta {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 0.74rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .detail-select {
+      min-width: min(100%, 320px);
+      border: 1px solid #cfd4dc;
+      background: #ffffff;
+      padding: 8px 10px;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 14px;
+    }
+
+    .micro-stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .micro-stat {
+      padding: 12px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+    }
+
+    .micro-stat b {
+      display: block;
+      margin-top: 5px;
+      font-size: 1.25rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .micro-stat span {
+      color: var(--muted);
+      font-size: 0.72rem;
+      font-weight: 850;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+    }
+
+    details {
+      border-top: 1px solid var(--line);
+      padding-top: 12px;
+    }
+
+    summary {
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 0.84rem;
+      font-weight: 850;
+    }
+
+    pre {
+      overflow-x: auto;
+      margin: 12px 0 0;
+      padding: 12px;
+      background: #15171a;
+      color: #f5f7fa;
+      font-size: 0.78rem;
+      line-height: 1.45;
+    }
+
+    .empty {
+      padding: 30px;
+      border: 1px dashed #cfd4dc;
+      background: var(--surface);
+      color: var(--muted);
+      text-align: center;
+      font-weight: 800;
+    }
+
+    .toast {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      max-width: min(420px, calc(100vw - 36px));
+      border: 1px solid var(--ink);
+      background: var(--ink);
+      color: #ffffff;
+      padding: 12px 14px;
+      box-shadow: var(--shadow);
+      opacity: 0;
+      transform: translateY(12px);
+      pointer-events: none;
+      transition: opacity 160ms ease, transform 160ms ease;
+      font-size: 0.88rem;
+      font-weight: 750;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @media (max-width: 1120px) {
+      .controls {
+        grid-template-columns: repeat(3, minmax(160px, 1fr));
+      }
+
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .shell {
+        width: min(100% - 20px, 1440px);
+        padding-top: 18px;
+      }
+
+      .topbar {
+        display: block;
+      }
+
+      .controls,
+      .micro-stats {
+        grid-template-columns: 1fr;
+      }
+
+      .chart-group,
+      .bar-row {
+        grid-template-columns: 1fr;
+      }
+
+      .bar-score {
+        text-align: left;
+      }
+
+      .panel-header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .panel-action,
+      .detail-select {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">Q</div>
+        <div>
+          <h1 class="brand-title">Benchmark Metrics Dashboard</h1>
+          <p class="brand-subtitle">Tanbih ML and LLM evaluation reports, normalized for comparison.</p>
+        </div>
+      </div>
+    </header>
+
+    <section class="controls" aria-label="Dashboard filters">
+      <div class="field">
+        <label for="techniqueFilter">Technique</label>
+        <select id="techniqueFilter"></select>
+      </div>
+      <div class="field">
+        <label for="languageFilter">Language</label>
+        <select id="languageFilter"></select>
+      </div>
+      <div class="field">
+        <label for="modelFilter">Model</label>
+        <select id="modelFilter"></select>
+      </div>
+      <div class="field">
+        <label for="metricFilter">Metric</label>
+        <select id="metricFilter"></select>
+      </div>
+      <div class="field">
+        <label for="sortFilter">Sort</label>
+        <select id="sortFilter"></select>
+      </div>
+      <div class="field">
+        <label>Reports</label>
+        <label class="file-label">
+          Import .txt
+          <input id="reportUpload" type="file" accept=".txt,text/plain" multiple>
+        </label>
+      </div>
+    </section>
+
+    <section class="dashboard-grid">
+      <div>
+        <section class="panel" aria-labelledby="chartTitle">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title" id="chartTitle">Score By Task And Language</h2>
+              <p class="panel-subtitle" id="chartSubtitle"></p>
+            </div>
+            <button class="panel-action" id="resetFilters" type="button">Reset Filters</button>
+          </div>
+          <div class="panel-body">
+            <div class="chart" id="scoreChart"></div>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="matrixTitle">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title" id="matrixTitle">Model Comparison Matrix</h2>
+              <p class="panel-subtitle">Each row compares all visible models for one technique and language.</p>
+            </div>
+          </div>
+          <div class="panel-body table-wrap">
+            <table id="matrixTable"></table>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="leaderboardTitle">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title" id="leaderboardTitle">Leaderboard</h2>
+              <p class="panel-subtitle">Report-level ranking with accuracy, macro, and weighted metrics.</p>
+            </div>
+            <button class="panel-action" id="exportCsv" type="button">Export CSV</button>
+          </div>
+          <div class="panel-body table-wrap">
+            <table id="leaderboardTable"></table>
+          </div>
+        </section>
+      </div>
+
+      <aside>
+        <section class="panel" aria-labelledby="modelSummaryTitle">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title" id="modelSummaryTitle">Model Averages</h2>
+              <p class="panel-subtitle">Averages are computed over the currently visible reports.</p>
+            </div>
+          </div>
+          <div class="panel-body table-wrap">
+            <table id="modelAverageTable"></table>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="detailTitle">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title" id="detailTitle">Class Details</h2>
+              <p class="panel-subtitle">Inspect precision, recall, f1-score, and support for one report.</p>
+            </div>
+            <select class="detail-select" id="detailSelect" aria-label="Select detailed report"></select>
+          </div>
+          <div class="panel-body">
+            <div class="detail-grid" id="detailPanel"></div>
+          </div>
+        </section>
+      </aside>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    /*
+      To add more persistent reports:
+      1. Add another object to REPORT_INPUTS.
+      2. Keep the filename pattern: technique_language_samples_model_report.txt.
+      3. Paste the raw sklearn classification_report text into raw.
+
+      The dashboard parses technique, language, sample count, model name,
+      accuracy, macro averages, weighted averages, and class rows automatically.
+    */
+    const REPORT_INPUTS = [
+      {
+        filename: "fact-checking_ar_7846_tanbih_report.txt",
+        raw: `
+              precision    recall  f1-score   support
+
+        High       0.93      0.87      0.90      2878
+         Low       0.82      0.90      0.86      3561
+       Mixed       0.85      0.75      0.80      1407
+
+    accuracy                           0.86      7846
+   macro avg       0.87      0.84      0.85      7846
+weighted avg       0.87      0.86      0.86      7846
+`
+      },
+      {
+        filename: "fact-checking_ar_7739_Fanar-C-2-27B_report.txt",
+        raw: `
+              precision    recall  f1-score   support
+
+        High       0.57      0.64      0.60      2869
+         Low       0.70      0.12      0.21      3501
+       Mixed       0.18      0.52      0.27      1369
+
+    accuracy                           0.38      7739
+   macro avg       0.48      0.43      0.36      7739
+weighted avg       0.56      0.38      0.36      7739
+`
+      },
+      {
+        filename: "checkworthiness_ar_610_tanbih_report.txt",
+        raw: `
+                 precision    recall  f1-score   support
+
+    checkworthy       0.40      0.75      0.52       218
+not_checkworthy       0.73      0.38      0.50       392
+
+       accuracy                           0.51       610
+      macro avg       0.57      0.56      0.51       610
+   weighted avg       0.61      0.51      0.51       610
+`
+      },
+      {
+        filename: "checkworthiness_ar_602_Fanar-C-2-27B_report.txt",
+        raw: `
+                 precision    recall  f1-score   support
+
+    checkworthy       0.41      0.98      0.58       215
+not_checkworthy       0.95      0.23      0.37       387
+
+       accuracy                           0.50       602
+      macro avg       0.68      0.60      0.47       602
+   weighted avg       0.76      0.50      0.44       602
+`
+      },
+      {
+        filename: "checkworthiness_en_1031_tanbih_report.txt",
+        raw: `
+                  precision    recall  f1-score   support
+
+    Check-worthy       0.91      0.94      0.93       238
+not-Check-worthy       0.98      0.97      0.98       793
+
+        accuracy                           0.97      1031
+       macro avg       0.95      0.96      0.95      1031
+    weighted avg       0.97      0.97      0.97      1031
+`
+      },
+      {
+        filename: "checkworthiness_en_1029_Fanar-C-2-27B_report.txt",
+        raw: `
+                  precision    recall  f1-score   support
+
+    Check-worthy       0.65      0.86      0.74       238
+not-Check-worthy       0.95      0.86      0.91       791
+
+        accuracy                           0.86      1029
+       macro avg       0.80      0.86      0.82      1029
+    weighted avg       0.88      0.86      0.87      1029
+`
+      },
+      {
+        filename: "propaganda-detection_en_11864_Fanar-C-2-27B_report.txt",
+        raw: `
+                    precision    recall  f1-score   support
+
+non-propagandistic       0.91      0.91      0.91     10287
+    propagandistic       0.43      0.42      0.43      1577
+
+          accuracy                           0.85     11864
+         macro avg       0.67      0.67      0.67     11864
+      weighted avg       0.85      0.85      0.85     11864
+`
+      },
+      {
+        filename: "propaganda-detection_en_6655_tanbih_report.txt",
+        raw: `
+                    precision    recall  f1-score   support
+
+non-propagandistic       0.97      0.88      0.92      5507
+    propagandistic       0.61      0.87      0.72      1148
+
+          accuracy                           0.88      6655
+         macro avg       0.79      0.88      0.82      6655
+      weighted avg       0.91      0.88      0.89      6655
+`
+      },
+      {
+        filename: "propaganda-detection_ar_4010_Fanar-C-2-27B_report.txt",
+        raw: `
+                precision    recall  f1-score   support
+
+Non-Propaganda       0.47      0.92      0.62      1593
+    Propaganda       0.85      0.31      0.45      2417
+
+      accuracy                           0.55      4010
+     macro avg       0.66      0.61      0.54      4010
+  weighted avg       0.70      0.55      0.52      4010
+`
+      },
+      {
+        filename: "propaganda-detection_ar_4220_tanbih_report.txt",
+        raw: `
+                precision    recall  f1-score   support
+
+Non-Propaganda       0.71      0.76      0.74      1630
+    Propaganda       0.84      0.81      0.82      2590
+
+      accuracy                           0.79      4220
+     macro avg       0.78      0.78      0.78      4220
+  weighted avg       0.79      0.79      0.79      4220
+`
+      }
+    ];
+
+    const LANGUAGE_LABELS = {
+      ar: "Arabic",
+      en: "English"
+    };
+
+    const METRICS = {
+      accuracy: {
+        label: "Accuracy",
+        shortLabel: "Accuracy",
+        value: report => report.accuracy
+      },
+      macroF1: {
+        label: "Macro F1",
+        shortLabel: "Macro F1",
+        value: report => report.summary.macroAvg?.f1
+      },
+      weightedF1: {
+        label: "Weighted F1",
+        shortLabel: "Weighted F1",
+        value: report => report.summary.weightedAvg?.f1
+      },
+      macroPrecision: {
+        label: "Macro Precision",
+        shortLabel: "Macro P",
+        value: report => report.summary.macroAvg?.precision
+      },
+      macroRecall: {
+        label: "Macro Recall",
+        shortLabel: "Macro R",
+        value: report => report.summary.macroAvg?.recall
+      },
+      weightedPrecision: {
+        label: "Weighted Precision",
+        shortLabel: "Weighted P",
+        value: report => report.summary.weightedAvg?.precision
+      },
+      weightedRecall: {
+        label: "Weighted Recall",
+        shortLabel: "Weighted R",
+        value: report => report.summary.weightedAvg?.recall
+      }
+    };
+
+    const SORTS = {
+      scoreDesc: "Score, high to low",
+      scoreAsc: "Score, low to high",
+      samplesDesc: "Samples, high to low",
+      taskAsc: "Technique A-Z",
+      modelAsc: "Model A-Z"
+    };
+
+    const MODEL_COLORS = {
+      tanbih: "#f31767",
+      "Fanar-C-2-27B": "#007c89"
+    };
+
+    const FALLBACK_COLORS = ["#415a77", "#a46a00", "#7b2cbf", "#2e7d32", "#c2410c", "#5b5f97"];
+
+    let reports = REPORT_INPUTS.map((input, index) => buildReport(input, index));
+    let detailId = reports[0]?.id || "";
+    const state = {
+      technique: "all",
+      language: "all",
+      model: "all",
+      metric: "weightedF1",
+      sort: "scoreDesc"
+    };
+
+    const els = {
+      techniqueFilter: document.querySelector("#techniqueFilter"),
+      languageFilter: document.querySelector("#languageFilter"),
+      modelFilter: document.querySelector("#modelFilter"),
+      metricFilter: document.querySelector("#metricFilter"),
+      sortFilter: document.querySelector("#sortFilter"),
+      reportUpload: document.querySelector("#reportUpload"),
+      resetFilters: document.querySelector("#resetFilters"),
+      exportCsv: document.querySelector("#exportCsv"),
+      scoreChart: document.querySelector("#scoreChart"),
+      chartSubtitle: document.querySelector("#chartSubtitle"),
+      matrixTable: document.querySelector("#matrixTable"),
+      leaderboardTable: document.querySelector("#leaderboardTable"),
+      modelAverageTable: document.querySelector("#modelAverageTable"),
+      detailSelect: document.querySelector("#detailSelect"),
+      detailPanel: document.querySelector("#detailPanel"),
+      toast: document.querySelector("#toast")
+    };
+
+    function buildReport(input, index) {
+      const meta = parseFilename(input.filename);
+      const parsed = parseReport(input.raw);
+      const id = `${meta.technique}|${meta.language}|${meta.model}|${meta.filenameSamples}|${index}`;
+      return {
+        id,
+        sourceIndex: index,
+        filename: input.filename,
+        raw: input.raw,
+        ...meta,
+        ...parsed,
+        sampleCount: parsed.support || meta.filenameSamples
+      };
+    }
+
+    function parseFilename(filename) {
+      const match = filename.match(/^(.+)_([a-z]{2})_(\d+)_(.+)_report\.txt$/i);
+      if (!match) {
+        return {
+          technique: "unknown",
+          techniqueLabel: "Unknown",
+          language: "na",
+          languageLabel: "N/A",
+          filenameSamples: 0,
+          model: filename.replace(/_report\.txt$/i, ""),
+          modelLabel: filename.replace(/_report\.txt$/i, "")
+        };
+      }
+
+      const technique = match[1];
+      const language = match[2].toLowerCase();
+      const model = match[4];
+      return {
+        technique,
+        techniqueLabel: titleCase(technique),
+        language,
+        languageLabel: LANGUAGE_LABELS[language] || language.toUpperCase(),
+        filenameSamples: Number(match[3]),
+        model,
+        modelLabel: formatModel(model)
+      };
+    }
+
+    function parseReport(raw) {
+      const classes = [];
+      const summary = {};
+      let accuracy = null;
+      let support = null;
+
+      raw.split(/\r?\n/).forEach(line => {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.includes("precision") && trimmed.includes("recall")) {
+          return;
+        }
+
+        const accuracyMatch = trimmed.match(/^accuracy\s+([0-9]*\.?[0-9]+)\s+(\d+)$/i);
+        if (accuracyMatch) {
+          accuracy = Number(accuracyMatch[1]);
+          support = Number(accuracyMatch[2]);
+          return;
+        }
+
+        const rowMatch = trimmed.match(/^(.+?)\s+([0-9]*\.?[0-9]+)\s+([0-9]*\.?[0-9]+)\s+([0-9]*\.?[0-9]+)\s+(\d+)$/);
+        if (!rowMatch) {
+          return;
+        }
+
+        const row = {
+          label: rowMatch[1].trim(),
+          precision: Number(rowMatch[2]),
+          recall: Number(rowMatch[3]),
+          f1: Number(rowMatch[4]),
+          support: Number(rowMatch[5])
+        };
+
+        const normalizedLabel = row.label.toLowerCase();
+        if (normalizedLabel === "macro avg") {
+          summary.macroAvg = row;
+        } else if (normalizedLabel === "weighted avg") {
+          summary.weightedAvg = row;
+        } else {
+          classes.push(row);
+        }
+      });
+
+      return { accuracy, support, classes, summary };
+    }
+
+    function titleCase(value) {
+      return value
+        .replace(/_/g, "-")
+        .split("-")
+        .filter(Boolean)
+        .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ");
+    }
+
+    function formatModel(model) {
+      if (model.toLowerCase() === "tanbih") {
+        return "Tanbih ML";
+      }
+      return model.replace(/_/g, " ");
+    }
+
+    function modelColor(model) {
+      if (MODEL_COLORS[model]) {
+        return MODEL_COLORS[model];
+      }
+      const models = [...new Set(reports.map(report => report.model))].sort();
+      const index = models.indexOf(model);
+      return FALLBACK_COLORS[Math.max(index, 0) % FALLBACK_COLORS.length];
+    }
+
+    function score(report, metric = state.metric) {
+      const value = METRICS[metric]?.value(report);
+      return Number.isFinite(value) ? value : null;
+    }
+
+    function pct(value) {
+      return Number.isFinite(value) ? `${(value * 100).toFixed(1)}%` : "n/a";
+    }
+
+    function intFormat(value) {
+      return Number.isFinite(value) ? value.toLocaleString() : "n/a";
+    }
+
+    function uniqueBy(items, getter) {
+      return [...new Set(items.map(getter))].sort((a, b) => String(a).localeCompare(String(b)));
+    }
+
+    function groupBy(items, getter) {
+      return items.reduce((groups, item) => {
+        const key = getter(item);
+        if (!groups.has(key)) {
+          groups.set(key, []);
+        }
+        groups.get(key).push(item);
+        return groups;
+      }, new Map());
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function setOptions(select, options, selectedValue) {
+      select.innerHTML = options.map(option => {
+        const selected = option.value === selectedValue ? " selected" : "";
+        return `<option value="${escapeHtml(option.value)}"${selected}>${escapeHtml(option.label)}</option>`;
+      }).join("");
+    }
+
+    function initControls() {
+      const techniqueOptions = [{ value: "all", label: "All techniques" }].concat(
+        uniqueBy(reports, report => report.technique).map(value => {
+          const found = reports.find(report => report.technique === value);
+          return { value, label: found.techniqueLabel };
+        })
+      );
+      const languageOptions = [{ value: "all", label: "All languages" }].concat(
+        uniqueBy(reports, report => report.language).map(value => {
+          const found = reports.find(report => report.language === value);
+          return { value, label: found.languageLabel };
+        })
+      );
+      const modelOptions = [{ value: "all", label: "All models" }].concat(
+        uniqueBy(reports, report => report.model).map(value => {
+          const found = reports.find(report => report.model === value);
+          return { value, label: found.modelLabel };
+        })
+      );
+      const metricOptions = Object.entries(METRICS).map(([value, config]) => ({ value, label: config.label }));
+      const sortOptions = Object.entries(SORTS).map(([value, label]) => ({ value, label }));
+
+      setOptions(els.techniqueFilter, techniqueOptions, state.technique);
+      setOptions(els.languageFilter, languageOptions, state.language);
+      setOptions(els.modelFilter, modelOptions, state.model);
+      setOptions(els.metricFilter, metricOptions, state.metric);
+      setOptions(els.sortFilter, sortOptions, state.sort);
+    }
+
+    function filteredReports() {
+      return reports.filter(report => {
+        const techniqueMatch = state.technique === "all" || report.technique === state.technique;
+        const languageMatch = state.language === "all" || report.language === state.language;
+        const modelMatch = state.model === "all" || report.model === state.model;
+        return techniqueMatch && languageMatch && modelMatch;
+      });
+    }
+
+    function sortedReports(items) {
+      return [...items].sort((a, b) => {
+        if (state.sort === "scoreAsc") {
+          return (score(a) ?? -1) - (score(b) ?? -1);
+        }
+        if (state.sort === "samplesDesc") {
+          return b.sampleCount - a.sampleCount;
+        }
+        if (state.sort === "taskAsc") {
+          return `${a.techniqueLabel} ${a.languageLabel} ${a.modelLabel}`.localeCompare(`${b.techniqueLabel} ${b.languageLabel} ${b.modelLabel}`);
+        }
+        if (state.sort === "modelAsc") {
+          return `${a.modelLabel} ${a.techniqueLabel} ${a.languageLabel}`.localeCompare(`${b.modelLabel} ${b.techniqueLabel} ${b.languageLabel}`);
+        }
+        return (score(b) ?? -1) - (score(a) ?? -1);
+      });
+    }
+
+    function render() {
+      const visible = sortedReports(filteredReports());
+      if (visible.length && !visible.some(report => report.id === detailId)) {
+        detailId = visible[0].id;
+      }
+
+      renderChart(visible);
+      renderMatrix(visible);
+      renderLeaderboard(visible);
+      renderModelAverages(visible);
+      renderDetailSelect(visible);
+      renderDetail(visible);
+    }
+
+    function renderChart(visible) {
+      const metric = METRICS[state.metric];
+      els.chartSubtitle.textContent = `${metric.label} as horizontal bars, grouped by technique and language.`;
+
+      if (!visible.length) {
+        els.scoreChart.innerHTML = `<div class="empty">No reports match the current filters.</div>`;
+        return;
+      }
+
+      const groups = [...groupBy(visible, report => `${report.technique}|${report.language}`).values()]
+        .sort((a, b) => `${a[0].techniqueLabel} ${a[0].languageLabel}`.localeCompare(`${b[0].techniqueLabel} ${b[0].languageLabel}`));
+
+      els.scoreChart.innerHTML = groups.map(group => {
+        const sortedGroup = [...group].sort((a, b) => (score(b) ?? -1) - (score(a) ?? -1));
+        const first = sortedGroup[0];
+        return `
+          <div class="chart-group">
+            <div class="chart-label">
+              ${escapeHtml(first.techniqueLabel)}
+              <span>${escapeHtml(first.languageLabel)}</span>
+            </div>
+            <div class="bar-stack">
+              ${sortedGroup.map(report => {
+                const value = score(report) ?? 0;
+                return `
+                  <div class="bar-row">
+                    <div class="bar-model" title="${escapeHtml(report.modelLabel)}">${escapeHtml(report.modelLabel)}</div>
+                    <div class="bar-track" aria-label="${escapeHtml(report.modelLabel)} ${escapeHtml(metric.label)} ${pct(value)}">
+                      <div class="bar-fill" style="width:${Math.max(value * 100, 1)}%; --bar-color:${modelColor(report.model)}"></div>
+                    </div>
+                    <div class="bar-score">${pct(value)}</div>
+                  </div>
+                `;
+              }).join("")}
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderMatrix(visible) {
+      const models = uniqueBy(visible, report => report.model);
+      const groups = [...groupBy(visible, report => `${report.technique}|${report.language}`).values()]
+        .sort((a, b) => `${a[0].techniqueLabel} ${a[0].languageLabel}`.localeCompare(`${b[0].techniqueLabel} ${b[0].languageLabel}`));
+
+      if (!visible.length) {
+        els.matrixTable.innerHTML = `<tbody><tr><td><div class="empty">No reports match the current filters.</div></td></tr></tbody>`;
+        return;
+      }
+
+      els.matrixTable.innerHTML = `
+        <thead>
+          <tr>
+            <th>Technique</th>
+            <th>Language</th>
+            ${models.map(model => `<th class="num">${escapeHtml(formatModel(model))}</th>`).join("")}
+          </tr>
+        </thead>
+        <tbody>
+          ${groups.map(group => {
+            const first = group[0];
+            const bestScore = Math.max(...group.map(report => score(report) ?? -1));
+            return `
+              <tr>
+                <td><strong>${escapeHtml(first.techniqueLabel)}</strong></td>
+                <td>${escapeHtml(first.languageLabel)}</td>
+                ${models.map(model => {
+                  const report = group
+                    .filter(item => item.model === model)
+                    .sort((a, b) => b.sampleCount - a.sampleCount)[0];
+                  if (!report) {
+                    return `<td class="num">-</td>`;
+                  }
+                  const value = score(report);
+                  const best = Number.isFinite(value) && value === bestScore ? " best" : "";
+                  return `
+                    <td class="num">
+                      <span class="score-cell${best}">${pct(value)}</span>
+                      <span class="score-meta">n=${intFormat(report.sampleCount)}</span>
+                    </td>
+                  `;
+                }).join("")}
+              </tr>
+            `;
+          }).join("")}
+        </tbody>
+      `;
+    }
+
+    function renderLeaderboard(visible) {
+      if (!visible.length) {
+        els.leaderboardTable.innerHTML = `<tbody><tr><td><div class="empty">No reports match the current filters.</div></td></tr></tbody>`;
+        return;
+      }
+
+      els.leaderboardTable.innerHTML = `
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Technique</th>
+            <th>Language</th>
+            <th>Model</th>
+            <th class="num">${escapeHtml(METRICS[state.metric].shortLabel)}</th>
+            <th class="num">Accuracy</th>
+            <th class="num">Macro F1</th>
+            <th class="num">Weighted F1</th>
+            <th class="num">Samples</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${visible.map((report, index) => `
+            <tr>
+              <td>${index + 1}</td>
+              <td><strong>${escapeHtml(report.techniqueLabel)}</strong></td>
+              <td>${escapeHtml(report.languageLabel)}</td>
+              <td>
+                <span class="model-chip" style="--model-color:${modelColor(report.model)}">
+                  <span class="model-dot"></span>${escapeHtml(report.modelLabel)}
+                </span>
+              </td>
+              <td class="num"><strong>${pct(score(report))}</strong></td>
+              <td class="num">${pct(report.accuracy)}</td>
+              <td class="num">${pct(report.summary.macroAvg?.f1)}</td>
+              <td class="num">${pct(report.summary.weightedAvg?.f1)}</td>
+              <td class="num">${intFormat(report.sampleCount)}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      `;
+    }
+
+    function renderModelAverages(visible) {
+      const groups = [...groupBy(visible, report => report.model).entries()]
+        .map(([model, group]) => {
+          const valid = group.map(report => score(report)).filter(Number.isFinite);
+          const avg = valid.length ? valid.reduce((sum, value) => sum + value, 0) / valid.length : null;
+          const samples = group.reduce((sum, report) => sum + report.sampleCount, 0);
+          return { model, modelLabel: group[0].modelLabel, count: group.length, avg, samples };
+        })
+        .sort((a, b) => (b.avg ?? -1) - (a.avg ?? -1));
+
+      if (!groups.length) {
+        els.modelAverageTable.innerHTML = `<tbody><tr><td><div class="empty">No model averages available.</div></td></tr></tbody>`;
+        return;
+      }
+
+      els.modelAverageTable.innerHTML = `
+        <thead>
+          <tr>
+            <th>Model</th>
+            <th class="num">${escapeHtml(METRICS[state.metric].shortLabel)}</th>
+            <th class="num">Reports</th>
+            <th class="num">Samples</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${groups.map(group => `
+            <tr>
+              <td>
+                <span class="model-chip" style="--model-color:${modelColor(group.model)}">
+                  <span class="model-dot"></span>${escapeHtml(group.modelLabel)}
+                </span>
+              </td>
+              <td class="num"><strong>${pct(group.avg)}</strong></td>
+              <td class="num">${intFormat(group.count)}</td>
+              <td class="num">${intFormat(group.samples)}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      `;
+    }
+
+    function renderDetailSelect(visible) {
+      const options = visible.map(report => ({
+        value: report.id,
+        label: `${report.techniqueLabel} / ${report.languageLabel} / ${report.modelLabel}`
+      }));
+      setOptions(els.detailSelect, options, detailId);
+      els.detailSelect.disabled = !options.length;
+    }
+
+    function renderDetail(visible) {
+      const report = visible.find(item => item.id === detailId);
+      if (!report) {
+        els.detailPanel.innerHTML = `<div class="empty">No report selected.</div>`;
+        return;
+      }
+
+      els.detailPanel.innerHTML = `
+        <div class="micro-stats">
+          <div class="micro-stat"><span>Accuracy</span><b>${pct(report.accuracy)}</b></div>
+          <div class="micro-stat"><span>Macro F1</span><b>${pct(report.summary.macroAvg?.f1)}</b></div>
+          <div class="micro-stat"><span>Samples</span><b>${intFormat(report.sampleCount)}</b></div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Class</th>
+                <th class="num">Precision</th>
+                <th class="num">Recall</th>
+                <th class="num">F1</th>
+                <th class="num">Support</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${report.classes.map(row => `
+                <tr>
+                  <td><strong>${escapeHtml(row.label)}</strong></td>
+                  <td class="num">${pct(row.precision)}</td>
+                  <td class="num">${pct(row.recall)}</td>
+                  <td class="num">${pct(row.f1)}</td>
+                  <td class="num">${intFormat(row.support)}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>
+        <details>
+          <summary>Raw report text</summary>
+          <pre>${escapeHtml(report.raw.trim())}</pre>
+        </details>
+      `;
+    }
+
+    function toCsv(visible) {
+      const headers = [
+        "filename",
+        "technique",
+        "language",
+        "model",
+        "samples",
+        "accuracy",
+        "macro_precision",
+        "macro_recall",
+        "macro_f1",
+        "weighted_precision",
+        "weighted_recall",
+        "weighted_f1"
+      ];
+      const rows = visible.map(report => [
+        report.filename,
+        report.technique,
+        report.language,
+        report.model,
+        report.sampleCount,
+        report.accuracy,
+        report.summary.macroAvg?.precision,
+        report.summary.macroAvg?.recall,
+        report.summary.macroAvg?.f1,
+        report.summary.weightedAvg?.precision,
+        report.summary.weightedAvg?.recall,
+        report.summary.weightedAvg?.f1
+      ]);
+
+      return [headers].concat(rows)
+        .map(row => row.map(cell => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(","))
+        .join("\n");
+    }
+
+    function downloadCsv() {
+      const visible = sortedReports(filteredReports());
+      const csv = toCsv(visible);
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = "benchmark_metrics_filtered.csv";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    async function importReports(event) {
+      const files = [...event.target.files];
+      if (!files.length) {
+        return;
+      }
+
+      const loaded = [];
+      for (const file of files) {
+        const raw = await file.text();
+        loaded.push({ filename: file.name, raw });
+      }
+
+      const startIndex = reports.length;
+      const parsed = loaded.map((input, index) => buildReport(input, startIndex + index));
+      reports = reports.concat(parsed);
+      detailId = parsed[0]?.id || detailId;
+      initControls();
+      render();
+      event.target.value = "";
+      showToast(`Imported ${parsed.length} report${parsed.length === 1 ? "" : "s"} for this session.`);
+    }
+
+    let toastTimer = null;
+    function showToast(message) {
+      clearTimeout(toastTimer);
+      els.toast.textContent = message;
+      els.toast.classList.add("show");
+      toastTimer = setTimeout(() => els.toast.classList.remove("show"), 2600);
+    }
+
+    function wireEvents() {
+      [
+        ["techniqueFilter", "technique"],
+        ["languageFilter", "language"],
+        ["modelFilter", "model"],
+        ["metricFilter", "metric"],
+        ["sortFilter", "sort"]
+      ].forEach(([elementKey, stateKey]) => {
+        els[elementKey].addEventListener("change", event => {
+          state[stateKey] = event.target.value;
+          render();
+        });
+      });
+
+      els.detailSelect.addEventListener("change", event => {
+        detailId = event.target.value;
+        renderDetail(filteredReports());
+      });
+
+      els.resetFilters.addEventListener("click", () => {
+        state.technique = "all";
+        state.language = "all";
+        state.model = "all";
+        state.metric = "weightedF1";
+        state.sort = "scoreDesc";
+        initControls();
+        render();
+      });
+
+      els.exportCsv.addEventListener("click", downloadCsv);
+      els.reportUpload.addEventListener("change", importReports);
+    }
+
+    initControls();
+    wireEvents();
+    render();
+  </script>
+</body>
+</html>
